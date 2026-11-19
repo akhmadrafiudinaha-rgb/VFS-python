@@ -1,4 +1,6 @@
+import io
 import tkinter as tk
+from contextlib import redirect_stdout
 from vfs import format_disk, mkdir, create, write, baca_isi, delete, copy, move, daftar_isi
 
 WARNA_LATAR = "#eef3f8"
@@ -25,30 +27,36 @@ gaya_isian = {
     "insertbackground": WARNA_HIAS,
 }
 
+def jalankan(fungsi, *args):
+    keluaran = io.StringIO()
+    with redirect_stdout(keluaran):
+        fungsi(*args)
+    label_status.config(text=keluaran.getvalue().strip())
+
 def klik_format():
-    format_disk()
+    jalankan(format_disk)
 
 def klik_mkdir():
-    mkdir(kotak_nama.get())
+    jalankan(mkdir, kotak_nama.get())
 
 def klik_create():
-    create(kotak_nama.get())
+    jalankan(create, kotak_nama.get())
 
 def klik_tulis():
-    write(kotak_nama.get(), kotak_isi.get())
+    jalankan(write, kotak_nama.get(), kotak_isi.get())
 
 def klik_baca():
     isi = baca_isi(kotak_nama.get())
     label_isi.config(text=isi)
 
 def klik_hapus():
-    delete(kotak_nama.get())
+    jalankan(delete, kotak_nama.get())
 
 def klik_salin():
-    copy(kotak_nama.get(), 0, int(kotak_tujuan.get()))
+    jalankan(copy, kotak_nama.get(), 0, int(kotak_tujuan.get()))
 
 def klik_pindah():
-    move(kotak_nama.get(), 0, int(kotak_tujuan.get()))
+    jalankan(move, kotak_nama.get(), 0, int(kotak_tujuan.get()))
 
 def klik_lihat():
     kotak_daftar.delete(0, tk.END)
@@ -120,6 +128,9 @@ tombol_pindah.pack(pady=6)
 
 judul_kanan = tk.Label(kanan, text="Hasil dan Daftar Isi", font=("Arial", 14, "bold"), bg=WARNA_TOMBOL, fg="white", padx=20, pady=6)
 judul_kanan.pack(pady=(15, 10))
+
+label_status = tk.Label(kanan, text="Siap", font=("Arial", 10, "italic"), bg=WARNA_LATAR, fg=WARNA_TOMBOL, wraplength=320)
+label_status.pack(pady=5)
 
 kartu_isi = tk.Frame(kanan, bg=WARNA_TOMBOL, padx=2, pady=2)
 kartu_isi.pack(pady=10, fill=tk.X)
