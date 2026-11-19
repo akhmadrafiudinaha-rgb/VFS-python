@@ -5,6 +5,7 @@ MAGIC = b"VFS1"                # tanda pengenal bahwa ini disk VFS
 UKURAN_INODE = 64              # satu inode berukuran 64 byte
 MAX_INODE = 100                # jumlah inode yang di sediakan
 AWAL_TABEL_INODE = 512         # tabel inode mulai dari byte 512
+AWAL_DATA = 6912               # Area Data mulai di byte 6912, setelah superblock dan 100 inode
 
 def format_disk():
     # "wb" = buka file untuk di tulis (file lama akan di timpa)
@@ -105,8 +106,8 @@ def create(nama_file, induk=0):
     # hitung  posisi inode di dalam file
     posisi = AWAL_TABEL_INODE + nomor_inode * UKURAN_INODE
 
-    # buat teks inode, nomor|nama|jenis|induk|ukuran
-    teks_inode = f"{nomor_inode}|{nama_file}|file|{induk}|0"
+    # buat teks inode, nomor|nama|jenis|induk|ukuran|blok_awal
+    teks_inode = f"{nomor_inode}|{nama_file}|file|{induk}|0|0"
     inode_byte = teks_inode.encode().ljust(UKURAN_INODE, b"\x00")
 
     # tulis inode ke posisinya
@@ -115,7 +116,39 @@ def create(nama_file, induk=0):
         f.write(inode_byte)
 
     print("File dibuat:", nama_file)
+    return
+def write(nama_file, isi):
+    # ubah teks menjadi bytes
+    data = isi.encode()
+
+    # buka disk untuk di ubah, pindah ke area Data, lalu tulis
+    with open(NAMA_FILE, "r+b") as f:
+        f.seek(AWAL_DATA)
+        f.write(data)
+
+    print("Isi di tulis ke disk:", len(data), "byte")
+
+    # langkah 1: cari nomor inode file ini (di root, induk = 0)
+    nomor = cari_inode_by_nama(nama_file, 0)
+    if nomor is None:
+        print("File tidak ditemukan:", nama_file)
+        return
+
+    # langkah 2: buat teks inode baru, ukuran dari panjang data, blok awal 0
+    teks_inode = f"{nomor}|{nama_file}|file|0|{len(data)}|0"
+    inode_byte = teks_inode.encode().ljust(UKURAN_INODE, b"\x00")
+
+    # langkah 3: tulis ulang inode ke posisinya 
+    with open(NAMA_FILE, "r+b") as f:
+        f.seek(AWAL_TABEL_INODE + nomor * UKURAN_INODE)
+        f.write(inode_byte)
+
+    # nomor = cari_inode_by_nama("laporan.txt", 0)
+    # with open(NAMA_FILE, "rb") as f:
+        # f.seek(AWAL_TABEL_INODE + nomor * UKURAN_INODE)
+        # print(f.read(UKURAN_INODE).rstrip(b"\x00").decode())
 # mkdir("dokumen")
 # mkdir("foto")
 # create("laporan.txt")
 ls(0)
+# write("laporan.txt", "halo dunia")
