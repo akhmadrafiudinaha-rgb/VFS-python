@@ -92,6 +92,18 @@ def ls(induk):
             # tampilkan nama jika induknya cocok
             if int(bagian[3]) == induk:
                 print(bagian[1])
+def daftar_isi (induk=0):
+    hasil = []
+    with open(NAMA_FILE, "rb") as f:
+        for nomor in range(1, MAX_INODE):
+            f.seek(AWAL_TABEL_INODE + nomor * UKURAN_INODE)
+            data = f.read(UKURAN_INODE)
+            if data == bytes(UKURAN_INODE):
+                continue
+            bagian = data.rstrip(b"\x00").decode().split("|")
+            if int(bagian[3]) == induk:
+                hasil.append(bagian[1])
+    return hasil
 def create(nama_file, induk=0):
     # cek dulu apakah nama sudah ada di folder ini
     if cari_inode_by_nama(nama_file, induk) is not None:
