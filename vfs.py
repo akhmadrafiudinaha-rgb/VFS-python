@@ -28,7 +28,7 @@ def format_disk():
         f.write(inode_byte)
     print("Disk baru berhasil di buat:", NAMA_FILE)
 
-# format_disk()
+format_disk()
 def cari_inode_kosong():
     with open(NAMA_FILE, "rb") as f:
         f.seek(AWAL_TABEL_INODE)
@@ -117,36 +117,32 @@ def create(nama_file, induk=0):
 
     print("File dibuat:", nama_file)
     return
-def write(nama_file, isi):
-    # ubah teks menjadi bytes
-    data = isi.encode()
-
-    # buka disk untuk di ubah, pindah ke area Data, lalu tulis
-    with open(NAMA_FILE, "r+b") as f:
-        f.seek(AWAL_DATA)
-        f.write(data)
-
-    print("Isi di tulis ke disk:", len(data), "byte")
-
-    # langkah 1: cari nomor inode file ini (di root, induk = 0)
-    nomor = cari_inode_by_nama(nama_file, 0)
+def write(nama_file, isi, induk=0):
+    nomor = cari_inode_by_nama(nama_file, induk)
     if nomor is None:
         print("File tidak ditemukan:", nama_file)
         return
 
-    # langkah 2: buat teks inode baru, ukuran dari panjang data, blok awal 0
-    teks_inode = f"{nomor}|{nama_file}|file|0|{len(data)}|0"
-    inode_byte = teks_inode.encode().ljust(UKURAN_INODE, b"\x00")
+    data = isi.encode()
+    jumlah_blok = (len(data) + UKURAN_BLOK - 1) // UKURAN_BLOK
+    blok_awal = cari_blok_awal_kosong(jumlah_blok)
+    if blok_awal is None:
+        print("Ruang disk tidak cukup")
+        return
+    
+    # tulis isi ke blok kosong yang ditemukan
+    with open(NAMA_FILE, "r+b") as f:
+        f.seek(AWAL_DATA + blok_awal * UKURAN_BLOK)
+        f.write(data)
 
-    # langkah 3: tulis ulang inode ke posisinya 
+    # perbarui inode dengan ukuran dan blok awal yang baru
+    teks_inode = f"{nomor}|{nama_file}|file|{induk}|{len(data)}|{blok_awal}"
+    inode_byte = teks_inode.encode().ljust(UKURAN_INODE, b"\x00")
     with open(NAMA_FILE, "r+b") as f:
         f.seek(AWAL_TABEL_INODE + nomor * UKURAN_INODE)
         f.write(inode_byte)
 
-    # nomor = cari_inode_by_nama("laporan.txt", 0)
-    # with open(NAMA_FILE, "rb") as f:
-        # f.seek(AWAL_TABEL_INODE + nomor * UKURAN_INODE)
-        # print(f.read(UKURAN_INODE).rstrip(b"\x00").decode())
+    print("Isi ditulis ke disk:", len(data), "byte")
 def read (nama_file, induk=0):
     # langkah 1: cari nomor inode file
     nomor = cari_inode_by_nama(nama_file, induk)
@@ -183,12 +179,11 @@ def info():
                 continue
             jumlah_inode_terpakai += 1
 
-            # root tidak punya isi, jadi tidak di hitung blok
-            if nomor == 0:
+            # hanya file yang punya ukuran dan blok, folder dilewati
+            bagian = data.rstrip(b"\x00").decode().split("|")
+            if bagian[2] != "file":
                 continue
 
-            # hitung blok dari ukuran file, dibulatkan ke atas
-            bagian = data.rstrip(b"\x00").decode().split("|")
             ukuran = int(bagian[4])
             blok_terpakai += (ukuran + UKURAN_BLOK - 1) // UKURAN_BLOK
 
@@ -198,6 +193,30 @@ def info():
     print("Inode terpakai :", jumlah_inode_terpakai, "dari", MAX_INODE)
     print("Blok terpakai  :", blok_terpakai, "dari", total_blok)
     print("Ruang kosong   :", (total_blok - blok_terpakai) * UKURAN_BLOK, "byte")
+def cari_blok_awal_kosong(jumlah_blok):
+    total_blok = (UKURAN_DISK - AWAL_DATA) // UKURAN_BLOK
+
+    # kumpulkan semua blok yang sudah dipakai file 
+    terpakai = set()
+    with open(NAMA_FILE, "rb") as f:
+        for nomor in range(1, MAX_INODE):
+            f.seek(AWAL_TABEL_INODE + nomor * UKURAN_INODE)
+            data = f.read(UKURAN_INODE)
+            if data == bytes(UKURAN_INODE):
+                continue
+            bagian = data.rstrip(b"\x00").decode().split("|")
+            if bagian[2] != "file":
+                continue
+            ukuran = int(bagian[4])
+            awal = int(bagian[5])
+            jml = (ukuran + UKURAN_BLOK - 1) // UKURAN_BLOK
+            terpakai.update(range(awal, awal + jml))
+
+    # cari posisi awal yang punya jumlah_blok blok kosong berurutan
+    for awal in range(total_blok - jumlah_blok + 1):
+        if not any(b in terpakai for b in range(awal, awal + jumlah_blok)):
+            return awal
+    return None
 def delete(nama, induk=0):
     # langkah 1: cari nomor inode yang mau di hapus 
     nomor = cari_inode_by_nama(nama, induk)
@@ -226,11 +245,62 @@ def delete(nama, induk=0):
         f.write(bytes(UKURAN_INODE))
 
     print("Dihapus:", nama)
+def copy(nama, induk_asal, induk_tujuan):
+    nomor = cari_inode_by_nama(nama, induk_asal)
+    if nomor is None:
+        print("Tidak ditemukan:", nama)
+        return
+    if cari_inode_by_nama(nama, induk_tujuan) is not None:
+        print("Sudah ada di tujuan:", nama)
+        return
+
+    # baca info file asli dari inodenya
+    with open(NAMA_FILE, "rb") as f:
+        f.seek(AWAL_TABEL_INODE + nomor * UKURAN_INODE)
+        bagian = f.read(UKURAN_INODE).rstrip(b"\x00").decode().split("|")
+    if bagian[2] != "file":
+        print("Hanya file yang bisa disalin")
+        return
+    ukuran = int(bagian[4])
+    awal = int(bagian[5])
+
+    # baca isi file asli
+    with open(NAMA_FILE, "rb") as f:
+        f.seek(AWAL_DATA + awal * UKURAN_BLOK)
+        isi = f.read(ukuran).decode()
+
+    # buat file baru di tujuan, lalu isi dengan salinannya
+    create(nama, induk_tujuan)
+    write(nama, isi, induk_tujuan)
+    print("Disalin:", nama)
+def move(nama, induk_asal, induk_tujuan):
+    nomor = cari_inode_by_nama(nama, induk_asal)
+    if nomor is None:
+        print("Tidak ditemukan:", nama)
+        return
+    if cari_inode_by_nama(nama, induk_tujuan) is not None:
+        print("Sudah ada di tujuan:", nama)
+        return
+    # cukup ubah kolom induk di inode, isi file tidak perlu di pindah
+    with open(NAMA_FILE, "rb") as f:
+        f.seek(AWAL_TABEL_INODE + nomor * UKURAN_INODE)
+        bagian = f.read(UKURAN_INODE).rstrip(b"\x00").decode().split("|")
+    bagian[3] = str(induk_tujuan)
+    inode_byte = "|".join(bagian).encode().ljust(UKURAN_INODE, b"\x00")
+    with open(NAMA_FILE, "r+b") as f:
+        f.seek(AWAL_TABEL_INODE + nomor * UKURAN_INODE)
+        f.write(inode_byte)
+    print("Dipindahkan:", nama)
+# format_disk()
 # mkdir("dokumen")
 # mkdir("foto")
 # create("laporan.txt")
 # write("laporan.txt", "halo dunia")
+# copy("laporan.txt", 0, 1)
 # read("laporan.txt")
-# delete("laporan.txt")
-ls(0)
-info()
+# delete("laporan.txt", 0)
+# move("laporan.txt", 1, 0)
+# ls(0)
+# ls(1)
+# info()
+# read("laporan.txt", 1)
