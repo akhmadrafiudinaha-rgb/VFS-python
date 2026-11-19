@@ -167,10 +167,41 @@ def read (nama_file, induk=0):
         data = f.read(ukuran)
 
     # langkah 4: ubah bytes menjadi teks, lalu tampilkan
-    print(data.decode()) 
+    print(data.decode())
+def info():
+    jumlah_inode_terpakai = 0
+    blok_terpakai = 0
+
+    # baca semua inode, hitung yang terpakai
+    with open(NAMA_FILE, "rb") as f:
+        for nomor in range(MAX_INODE):
+            f.seek(AWAL_TABEL_INODE + nomor * UKURAN_INODE)
+            data = f.read(UKURAN_INODE)
+
+            # lewati inode kosong
+            if data == bytes(UKURAN_INODE):
+                continue
+            jumlah_inode_terpakai += 1
+
+            # root tidak punya isi, jadi tidak di hitung blok
+            if nomor == 0:
+                continue
+
+            # hitung blok dari ukuran file, dibulatkan ke atas
+            bagian = data.rstrip(b"\x00").decode().split("|")
+            ukuran = int(bagian[4])
+            blok_terpakai += (ukuran + UKURAN_BLOK - 1) // UKURAN_BLOK
+
+    # hitung total blok di Area Data, lalu tampilkan hasilnya
+    total_blok = (UKURAN_DISK - AWAL_DATA) // UKURAN_BLOK
+    print("Ukuran blok    :", UKURAN_BLOK, "byte")
+    print("Inode terpakai :", jumlah_inode_terpakai, "dari", MAX_INODE)
+    print("Blok terpakai  :", blok_terpakai, "dari", total_blok)
+    print("Ruang kosong   :", (total_blok - blok_terpakai) * UKURAN_BLOK, "byte")
 # mkdir("dokumen")
 # mkdir("foto")
 # create("laporan.txt")
 ls(0)
 # write("laporan.txt", "halo dunia")
 # read("laporan.txt")
+# info()
