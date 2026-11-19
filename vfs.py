@@ -177,6 +177,20 @@ def read (nama_file, induk=0):
 
     # langkah 4: ubah bytes menjadi teks, lalu tampilkan
     print(data.decode())
+def baca_isi(nama, induk=0):
+    nomor = cari_inode_by_nama(nama, induk)
+    if nomor is None:
+        return "File tidak ditemukan"
+    with open(NAMA_FILE, "rb") as f:
+        f.seek(AWAL_TABEL_INODE + nomor * UKURAN_INODE)
+        bagian = f.read(UKURAN_INODE).rstrip(b"\x00").decode().split("|")
+        if bagian[2] != "file":
+            return "Bukan file"
+        ukuran = int(bagian[4])
+        awal = int(bagian[5])
+        f.seek(AWAL_DATA + awal * UKURAN_BLOK)
+        isi = f.read(ukuran).decode()
+    return isi
 def info():
     jumlah_inode_terpakai = 0
     blok_terpakai = 0

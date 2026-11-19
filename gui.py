@@ -1,5 +1,5 @@
 import tkinter as tk
-from vfs import format_disk, mkdir, create, write, read, daftar_isi
+from vfs import format_disk, mkdir, create, write, baca_isi, daftar_isi
 
 def klik_format():
     format_disk()
@@ -14,7 +14,8 @@ def klik_tulis():
     write(kotak_nama.get(), kotak_isi.get())
 
 def klik_baca():
-    read(kotak_nama.get())
+    isi = baca_isi(kotak_nama.get())
+    label_isi.config(text=isi)
 
 def klik_lihat():
     kotak_daftar.delete(0, tk.END)
@@ -48,6 +49,9 @@ tombol_tulis.pack(pady=10)
 
 tombol_baca = tk.Button(jendela, text="Baca File", command=klik_baca)
 tombol_baca.pack(pady=10)
+
+label_isi = tk.Label(jendela, text="", font=("Arial", 12))
+label_isi.pack(pady=10)
 
 tombol_lihat = tk.Button(jendela, text="Lihat isi Root", command=klik_lihat)
 tombol_lihat.pack(pady=10)
