@@ -91,6 +91,31 @@ def ls(induk):
             # tampilkan nama jika induknya cocok
             if int(bagian[3]) == induk:
                 print(bagian[1])
-ls(0)
+def create(nama_file, induk=0):
+    # cek dulu apakah nama sudah ada di folder ini
+    if cari_inode_by_nama(nama_file, induk) is not None:
+        print("File sudah ada:", nama_file)
+        return
+
+    # cari nomor inode yang masih kosong
+    nomor_inode = cari_inode_kosong()
+    if nomor_inode is None:
+        print("Tabel inode penuh, file tidak bisa dibuat")
+
+    # hitung  posisi inode di dalam file
+    posisi = AWAL_TABEL_INODE + nomor_inode * UKURAN_INODE
+
+    # buat teks inode, nomor|nama|jenis|induk|ukuran
+    teks_inode = f"{nomor_inode}|{nama_file}|file|{induk}|0"
+    inode_byte = teks_inode.encode().ljust(UKURAN_INODE, b"\x00")
+
+    # tulis inode ke posisinya
+    with open(NAMA_FILE, "r+b") as f:
+        f.seek(posisi)
+        f.write(inode_byte)
+
+    print("File dibuat:", nama_file)
 # mkdir("dokumen")
 # mkdir("foto")
+# create("laporan.txt")
+ls(0)
