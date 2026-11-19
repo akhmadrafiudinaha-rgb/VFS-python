@@ -1,5 +1,5 @@
 import tkinter as tk
-from vfs import format_disk, mkdir, create, write, baca_isi, daftar_isi
+from vfs import format_disk, mkdir, create, write, baca_isi, delete, daftar_isi
 
 def klik_format():
     format_disk()
@@ -17,6 +17,9 @@ def klik_baca():
     isi = baca_isi(kotak_nama.get())
     label_isi.config(text=isi)
 
+def klik_hapus():
+    delete(kotak_nama.get())
+
 def klik_lihat():
     kotak_daftar.delete(0, tk.END)
     for nama in daftar_isi(0):
@@ -24,7 +27,7 @@ def klik_lihat():
 
 jendela = tk.Tk()
 jendela.title("Virtual File System")
-jendela.geometry("500x700")
+jendela.geometry("500x800")
 
 judul = tk.Label(jendela, text="Virtual File System", font=("Arial",16))
 judul.pack(pady=20)
@@ -52,6 +55,9 @@ tombol_baca.pack(pady=10)
 
 label_isi = tk.Label(jendela, text="", font=("Arial", 12))
 label_isi.pack(pady=10)
+
+tombol_hapus = tk.Button(jendela, text="Hapus", command=klik_hapus)
+tombol_hapus.pack(pady=10)
 
 tombol_lihat = tk.Button(jendela, text="Lihat isi Root", command=klik_lihat)
 tombol_lihat.pack(pady=10)
