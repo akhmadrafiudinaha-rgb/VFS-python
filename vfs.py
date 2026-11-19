@@ -147,8 +147,30 @@ def write(nama_file, isi):
     # with open(NAMA_FILE, "rb") as f:
         # f.seek(AWAL_TABEL_INODE + nomor * UKURAN_INODE)
         # print(f.read(UKURAN_INODE).rstrip(b"\x00").decode())
+def read (nama_file, induk=0):
+    # langkah 1: cari nomor inode file
+    nomor = cari_inode_by_nama(nama_file, induk)
+    if nomor is None:
+        print("File tidak ditemukan:", nama_file)
+        return
+    # langkah 2: baca teks inode, lalu ambil ukuran dan blok awalnya
+    with open(NAMA_FILE, "rb") as f:
+        f.seek(AWAL_TABEL_INODE + nomor * UKURAN_INODE)
+        teks = f.read(UKURAN_INODE).rstrip(b"\x00").decode()
+    bagian = teks.split("|")
+    ukuran = int(bagian[4])
+    blok_awal = int(bagian[5])
+
+    # langkah 3: baca isi dari area Data sebanyak ukuran byte
+    with open(NAMA_FILE, "rb") as f:
+        f.seek(AWAL_DATA + blok_awal * UKURAN_BLOK)
+        data = f.read(ukuran)
+
+    # langkah 4: ubah bytes menjadi teks, lalu tampilkan
+    print(data.decode()) 
 # mkdir("dokumen")
 # mkdir("foto")
 # create("laporan.txt")
 ls(0)
 # write("laporan.txt", "halo dunia")
+# read("laporan.txt")
