@@ -102,6 +102,7 @@ def create(nama_file, induk=0):
     nomor_inode = cari_inode_kosong()
     if nomor_inode is None:
         print("Tabel inode penuh, file tidak bisa dibuat")
+        return
 
     # hitung  posisi inode di dalam file
     posisi = AWAL_TABEL_INODE + nomor_inode * UKURAN_INODE
