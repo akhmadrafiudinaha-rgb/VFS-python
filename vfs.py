@@ -198,10 +198,39 @@ def info():
     print("Inode terpakai :", jumlah_inode_terpakai, "dari", MAX_INODE)
     print("Blok terpakai  :", blok_terpakai, "dari", total_blok)
     print("Ruang kosong   :", (total_blok - blok_terpakai) * UKURAN_BLOK, "byte")
+def delete(nama, induk=0):
+    # langkah 1: cari nomor inode yang mau di hapus 
+    nomor = cari_inode_by_nama(nama, induk)
+    if nomor is None:
+        print("Tidak ditemukan:", nama)
+        return
+
+    # langkah 2: kalau folder, pastikan tidak ada isinya
+    with open(NAMA_FILE, "rb") as f:
+        f.seek(AWAL_TABEL_INODE + nomor * UKURAN_INODE)
+        bagian = f.read(UKURAN_INODE).rstrip(b"\x00").decode()
+
+        if bagian[2] == "folder":
+            for n in range(1, MAX_INODE):
+                f.seek(AWAL_TABEL_INODE + n * UKURAN_INODE)
+                data = f.read(UKURAN_INODE)
+                if data == bytes(UKURAN_INODE):
+                    continue
+                anak = data.rsplit(b"\00").decode().split("|")
+                if int(anak[3]) == nomor:
+                    print("Folder tidak kosong, tidak bisa di hapus:", nama)
+                    return
+    # langkah 3: hapus dengan mengosongkan inode (diisi nol)
+    with open(NAMA_FILE, "r+b") as f:
+        f.seek(AWAL_TABEL_INODE + nomor * UKURAN_INODE)
+        f.write(bytes(UKURAN_INODE))
+
+    print("Dihapus:", nama)
 # mkdir("dokumen")
 # mkdir("foto")
 # create("laporan.txt")
-ls(0)
 # write("laporan.txt", "halo dunia")
 # read("laporan.txt")
-# info()
+# delete("laporan.txt")
+ls(0)
+info()
